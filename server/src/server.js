@@ -5,6 +5,7 @@ const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
 
 // server setup
+const MONGO_URL = "http://localhost:27017/nasa";
 
 async function startServer() {
   await loadPlanetsData();
