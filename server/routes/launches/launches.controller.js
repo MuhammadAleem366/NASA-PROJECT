@@ -1,15 +1,15 @@
 const {
   getAllLaunches,
-  addNewLaunch,
+  scheduleNewLaunch,
   abortLaunchById,
   existsLaunchWithId,
 } = require("../../models/launches.model");
 
-function httpGetAllLaunches(req, res) {
-  return res.status(200).json(getAllLaunches());
+async function httpGetAllLaunches(req, res) {
+  return res.status(200).json(await getAllLaunches());
 }
 
-function httpAddLaunch(req, res) {
+async function httpAddLaunch(req, res) {
   const launch = req.body;
   if (
     !launch.mission ||
@@ -21,24 +21,35 @@ function httpAddLaunch(req, res) {
       error: "Some missing properties are required",
     });
   }
+  launch.launchDate = new Date(launch.launchDate);
+  if (isNaN(launch.launchDate)) {
+    return res.status(400).json({
+      error: "Date is not valid",
+    });
+  }
 
-  // if (isNaN(launch.launchDate)) {
-  //   return res.status(400).json({
-  //     error: "Date is not valid",
-  //   });
-  // }
-  return res.status(201).json(addNewLaunch(launch));
+  await scheduleNewLaunch(launch);
+  return res.status(201).json(launch);
 }
 
-function httpAbortLaunch(req, res) {
+async function httpAbortLaunch(req, res) {
   const launchId = Number(req.params.id);
-  if (!existsLaunchWithId(launchId)) {
+  const existsLaunch = await existsLaunchWithId(launchId);
+
+  if (!existsLaunch) {
     return res.status(404).json({
       error: `launch with ${launchId} not found`,
     });
   }
-  const aborted = abortLaunchById(launchId);
-  return res.status(200).json(aborted);
+  const aborted = await abortLaunchById(launchId);
+  if (!aborted) {
+    return res.status(400).json({
+      error: "Launch not aborted",
+    });
+  }
+  return res.status(200).json({
+    ok: true,
+  });
 }
 module.exports = {
   httpGetAllLaunches,
