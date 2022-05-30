@@ -17,11 +17,13 @@ const launch = {
 saveLaunch(launch);
 
 const SPACEX_API_URL = "https://api.spacexdata.com/v4/launches/query";
-async function loadLaunchData() {
+
+async function populateLaunches() {
   console.log("Downloading data from space x api ", SPACEX_API_URL);
   const response = await axios.post(SPACEX_API_URL, {
     query: {},
     options: {
+      pagination: false,
       populate: [
         {
           path: "rocket",
@@ -39,6 +41,10 @@ async function loadLaunchData() {
     },
   });
 
+  if (response.status !== 200) {
+    console.log(`Data downloading failed`);
+    throw new Error("data downloading failed");
+  }
   const launchDocs = response.data.docs;
 
   for (const launchDoc of launchDocs) {
@@ -58,6 +64,21 @@ async function loadLaunchData() {
       upcoming: launchDoc["upcoming"],
     };
     console.log(`${launch.flightNumber} ${launch.mission}`);
+    saveLaunch(launch);
+  }
+}
+
+async function loadLaunchData() {
+  const firstLaunch = await findLaunch({
+    flightNumber: 1,
+    rocket: "Falcon 1",
+    mission: "FalconSat",
+  });
+
+  if (firstLaunch) {
+    console.log(`Launch Data Already exists`);
+  } else {
+    populateLaunches();
   }
 }
 
@@ -68,16 +89,11 @@ async function getLatestFlightNumber() {
   }
 }
 
+async function findLaunch(filter) {
+  return await launchesDatabase.findOne(filter);
+}
 async function saveLaunch(incomingLaunch) {
   // checking if launch target exists in planets collection
-
-  const planet = await planetsDatabase.findOne({
-    keplerName: incomingLaunch.target,
-  });
-
-  if (!planet) {
-    throw new Error("No match found with this target planet");
-  }
 
   /**
    * we can use updateOne() method but when adding new launch it returns
@@ -106,6 +122,14 @@ async function getAllLaunches() {
 }
 
 async function scheduleNewLaunch(incomingLaunch) {
+  const planet = await planetsDatabase.findOne({
+    keplerName: incomingLaunch.target,
+  });
+
+  if (!planet) {
+    throw new Error("No match found with this target planet");
+  }
+
   const newFlightNumber = (await getLatestFlightNumber()) + 1;
   const newLaunch = Object.assign(incomingLaunch, {
     success: true,
