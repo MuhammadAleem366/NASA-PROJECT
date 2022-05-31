@@ -3,19 +3,6 @@ const planetsDatabase = require("./planets.mongo");
 const axios = require("axios");
 const DEFAULT_FLIGHT_NUMBER = 100;
 
-const launch = {
-  flightNumber: DEFAULT_FLIGHT_NUMBER,
-  mission: "",
-  launchDate: new Date("january 17,2008"),
-  target: "Kepler-1652 b",
-  customers: ["1", "2"],
-  success: true,
-  upcoming: true,
-};
-
-// launches.set(launch.flightNumber, launch);
-saveLaunch(launch);
-
 const SPACEX_API_URL = "https://api.spacexdata.com/v4/launches/query";
 
 async function populateLaunches() {
@@ -58,7 +45,6 @@ async function populateLaunches() {
       mission: launchDoc["name"],
       rocket: launchDoc["rocket"]["name"],
       launchDate: launchDoc["date_local"],
-      target: "Kepler-1652 b",
       customers: customers,
       success: launchDoc["success"],
       upcoming: launchDoc["upcoming"],
@@ -102,10 +88,11 @@ async function saveLaunch(incomingLaunch) {
    * we do not want to give hackers info that we are using mongo or mongoose
    * so we will use findOneAndUpdate()
    */
+
   try {
     await launchesDatabase.findOneAndUpdate(
       {
-        flightNumber: launch.flightNumber,
+        flightNumber: incomingLaunch.flightNumber,
       },
       incomingLaunch,
       {
@@ -117,8 +104,22 @@ async function saveLaunch(incomingLaunch) {
   }
 }
 
-async function getAllLaunches() {
-  return await launchesDatabase.find({}, { __v: 0, _id: 0 });
+async function getAllLaunches(limit, skip) {
+  /**
+   * find() second parameter is a projection and skips the values that are 0
+   * in our case it will skip __v and _id if we want to include som values we can set 0 to 1
+   *
+   * limit() sets how many values we should return
+   * skip() skips the values that are passed in
+   * sort() is used to sort result basis on some criteria
+   * in sort {flightNumber:1} sorts in ascending order -1 will sort in descending order if specified
+   */
+
+  return await launchesDatabase
+    .find({}, { __v: 0, _id: 0 })
+    .sort({ flightNumber: 1 })
+    .skip(skip)
+    .limit(limit);
 }
 
 async function scheduleNewLaunch(incomingLaunch) {
