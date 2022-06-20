@@ -1,4 +1,4 @@
-name: NASA Project CI
+name: Nasa project CI
 
 on:
   push:
